@@ -64,7 +64,7 @@ common:
 	
 
 osx:
-	ADDON_LIBS = libs/GoIO/lib/osx/libGoIOUniversal.a
+# 	ADDON_LIBS = libs/GoIO/lib/osx/libGoIOUniversal.a
 vs:
 	# x64
 	ADDON_LIBS = libs/GoIO/lib/vs/x64/GoIO_DLL.lib

@@ -8,6 +8,44 @@
 
 #include "GoIO_DLL_interface.h"
 
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//IMPORTANTE. Todas las funciones de GOIO_ se tienen que llamar desde el mismo thread the abrio el device, esto no esta resuelto y hay qye resolverlo.
+//Quizas hacer una version no threaded no es mala idea. Usando unos ifdef
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #define OFX_GO_IO_DEFAULT_TIMEOUT SKIP_TIMEOUT_MS_DEFAULT
 #define OFX_GO_IO_DEFAULT_NUM_MEASUREMENTS 1000
 class ofxGoIODevice{
@@ -29,7 +67,7 @@ private:
 };
 
 
-std::ostream& operator<<(std::ostream& os, const ofxGoIODevice& dev){
+inline std::ostream& operator<<(std::ostream& os, const ofxGoIODevice& dev){
 	os << "Name: " << dev.name << " Vendor Id: " << dev.vendorId << " Product Id: " << dev.productId;
 	return os;
 }
@@ -52,7 +90,7 @@ public:
 	
 };
 
-std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data){
+inline std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data){
 	os << "Measurement: " << std::endl;
 	os << "     Num Samples:  " << data.data.size() << std::endl;
  	os << "     Aquisition time:  " << data.aquisitionTime << std::endl;
@@ -113,7 +151,7 @@ public:
 };
 
 
-std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
+inline std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
 	os << "ofxGoIO Device Calibration Profile:" << std::endl;
 	os << "    Page Index: " << profile.calPageIndex << std::endl;
 	os << "    Coefficients: " << profile.coeff[0] << ", " << profile.coeff[1] << ", " << profile.coeff[2] << std::endl;

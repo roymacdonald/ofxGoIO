@@ -231,6 +231,25 @@
 				<key>sourceTree</key>
 				<string>SOURCE_ROOT</string>
 			</dict>
+			<key>928F60851B6710B200E2D791</key>
+			<dict>
+				<key>buildActionMask</key>
+				<string>2147483647</string>
+				<key>files</key>
+				<array />
+				<key>inputPaths</key>
+				<array />
+				<key>isa</key>
+				<string>PBXShellScriptBuildPhase</string>
+				<key>outputPaths</key>
+				<array />
+				<key>runOnlyForDeploymentPostprocessing</key>
+				<string>0</string>
+				<key>shellPath</key>
+				<string>/bin/sh</string>
+				<key>shellScript</key>
+				<string>cp "$OF_PATH/addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.dylib" "$TARGET_BUILD_DIR/$PRODUCT_NAME.app/Contents/MacOS/"; cd "$TARGET_BUILD_DIR/$PRODUCT_NAME.app/Contents/MacOS/"; install_name_tool  -change @rpath/libGoIOUniversal.dylib @executable_path/libGoIOUniversal.dylib "$PRODUCT_NAME"</string>
+			</dict>
 			<key>6948EE371B920CB800B5AC1A</key>
 			<dict>
 				<key>children</key>
@@ -467,7 +486,7 @@ fi
 						<string>$(OF_CORE_LIBS)</string>
 						<string>$(OF_CORE_FRAMEWORKS)</string>
 						<string>$(LIB_OF)</string>
-						<string>../../../addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.a</string>
+						<string>../../../addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.dylib</string>
 					</array>
 					<key>PRODUCT_NAME</key>
 					<string>$(TARGET_NAME)</string>
@@ -3378,6 +3397,7 @@ fi
 					<string>E4B6FFFD0C3F9AB9008CF71C</string>
 					<string>E4C2427710CC5ABF004149E2</string>
 					<string>8466F1851C04CA0E00918B1C</string>
+					<string>928F60851B6710B200E2D791</string>
 				</array>
 				<key>buildRules</key>
 				<array />
@@ -3467,7 +3487,7 @@ fi
 						<string>$(OF_CORE_LIBS)</string>
 						<string>$(OF_CORE_FRAMEWORKS)</string>
 						<string>$(LIB_OF_DEBUG)</string>
-						<string>../../../addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.a</string>
+						<string>../../../addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.dylib</string>
 					</array>
 					<key>PRODUCT_NAME</key>
 					<string>$(TARGET_NAME)Debug</string>
@@ -3522,7 +3542,7 @@ fi
 						<string>$(OF_CORE_LIBS)</string>
 						<string>$(OF_CORE_FRAMEWORKS)</string>
 						<string>$(LIB_OF)</string>
-						<string>../../../addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.a</string>
+						<string>../../../addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.dylib</string>
 					</array>
 					<key>PRODUCT_NAME</key>
 					<string>$(TARGET_NAME)</string>

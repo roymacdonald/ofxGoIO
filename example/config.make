@@ -26,6 +26,7 @@
 #   GTK is installed, one might test that here and create a variable to check. 
 ################################################################################
 # None
+PROJECT_AFTER_OSX = cp "$OF_PATH/addons/ofxGoIO/libs/GoIO/lib/osx/libGoIOUniversal.dylib" "$TARGET_BUILD_DIR/$PRODUCT_NAME.app/Contents/MacOS/"; cd "$TARGET_BUILD_DIR/$PRODUCT_NAME.app/Contents/MacOS/"; install_name_tool  -change @rpath/libGoIOUniversal.dylib @executable_path/libGoIOUniversal.dylib "$PRODUCT_NAME"
 
 ################################################################################
 # PROJECT EXTERNAL SOURCE PATHS
