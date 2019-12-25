@@ -79,6 +79,7 @@ public:
 };
 
 //---------------------------------------------------------------------------------------------------
+class ofxGoIORenderer;
 
 class ofxGoIO
 #ifdef OFX_GO_IO_USE_THREAD
@@ -86,6 +87,7 @@ class ofxGoIO
 #endif
 {
 public:
+	friend class ofxGoIORenderer;
 	ofxGoIO();
 	virtual ~ofxGoIO();
 	enum State{

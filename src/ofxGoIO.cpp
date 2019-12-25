@@ -228,7 +228,7 @@ void ofxGoIO::clear(){
 //---------------------------------------------------------------------------------------------
 double ofxGoIO::getMeasurementTickInSeconds(){
 	auto ret = GoIO_Sensor_GetMeasurementTickInSeconds(	handle );
-	if(ret > 0){
+	if(ret < 0){
 		ofLogWarning("ofxGoIO::getMeasurementTickInSeconds") << "failed";
 	}
 	return ret;
@@ -236,7 +236,7 @@ double ofxGoIO::getMeasurementTickInSeconds(){
 //---------------------------------------------------------------------------------------------
 double ofxGoIO::getMinimumMeasurementPeriod(){
 	auto ret = GoIO_Sensor_GetMinimumMeasurementPeriod(	handle );
-	if(ret > 0){
+	if(ret < 0){
 		ofLogWarning("ofxGoIO::getMinimumMeasurementPeriod") << "failed";
 	}
 	return ret;
@@ -244,7 +244,7 @@ double ofxGoIO::getMinimumMeasurementPeriod(){
 //---------------------------------------------------------------------------------------------
 double ofxGoIO::getMaximumMeasurementPeriod(){
 	auto ret = GoIO_Sensor_GetMaximumMeasurementPeriod(	handle );
-	if(ret > 0){
+	if(ret < 0){
 		ofLogWarning("ofxGoIO::getMaximumMeasurementPeriod") << "failed";
 	}
 	return ret;
@@ -282,11 +282,7 @@ double ofxGoIO::getMeasurementPeriod( int timeoutMs){
 }
 //---------------------------------------------------------------------------------------------
 int ofxGoIO::getNumMeasurementsAvailable(){
-	auto ret = GoIO_Sensor_GetNumMeasurementsAvailable(	handle );
-	if(ret != 0){
-		ofLogWarning("ofxGoIO::getNumMeasurementsAvailable") << "failed";
-	}
-	return ret;
+	return GoIO_Sensor_GetNumMeasurementsAvailable(	handle );
 }
 //---------------------------------------------------------------------------------------------
 void ofxGoIO::calibrate( size_t numSamples){
@@ -322,28 +318,28 @@ void ofxGoIO::updateCalibration(){
 void ofxGoIO::updateMeasurements(){
 	if(getState() == OFX_GO_IO_STATE_MEASURING){
 		size_t m = getNumMeasurementsAvailable();
-		
-		lastMeasurement.data.resize(m);
-		
-		auto n = GoIO_Sensor_ReadRawMeasurements(handle,
-												 lastMeasurement.data.data(),
-												 m);
-		lastMeasurement.aquisitionTime = ofGetElapsedTimef();
-		lastMeasurement.sampleTimeInterval = measurementsInterval;
-		if(n != m){
-			ofLogError("ofxGoIO::updateMeasurements()") << "did not read all available measurements";
-		}
-		if(n){
-			bHasNewData = true;
-#ifdef OFX_GO_IO_USE_THREAD
-			unique_lock<std::mutex> lck(dataMutex);
-#endif
-			measurements[currentMeasurementIndex] = lastMeasurement;
-			++currentMeasurementIndex %= measurements.size();
+		if(m){
+			lastMeasurement.data.resize(m);
 			
+			auto n = GoIO_Sensor_ReadRawMeasurements(handle,
+													 lastMeasurement.data.data(),
+													 m);
+			lastMeasurement.aquisitionTime = ofGetElapsedTimef();
+			lastMeasurement.sampleTimeInterval = measurementsInterval;
+			if(n != m){
+				ofLogError("ofxGoIO::updateMeasurements()") << "did not read all available measurements";
+			}
+			if(n){
+				bHasNewData = true;
+#ifdef OFX_GO_IO_USE_THREAD
+				unique_lock<std::mutex> lck(dataMutex);
+#endif
+				measurements[currentMeasurementIndex] = lastMeasurement;
+				++currentMeasurementIndex %= measurements.size();
+				
+			}
+			ofNotifyEvent(newMeasurementEvent, lastMeasurement, this);
 		}
-		ofNotifyEvent(newMeasurementEvent, lastMeasurement, this);
-		
 	}
 }
  //---------------------------------------------------------------------------------------------
@@ -455,72 +451,77 @@ std::string ofxGoIO::stateToString(ofxGoIO::State s){
 	return "";
 }
 //---------------------------------------------------------------------------------------------
-
-std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
+//---------------------------------------------------------------------------------------------
+void ofxGoIODeviceCalibrationData::setup(size_t _numSamples){
+	numSamples = _numSamples;
+	rawMeasurements.resize(_numSamples);
+	volts.resize(_numSamples);
+	calbMeasurements.resize(_numSamples);
+	averageCalbMeasurement = 0;
+	currentSample = 0;
+}
+//---------------------------------------------------------------------------------------------
+size_t ofxGoIODeviceCalibrationData::size() {
+	return numSamples;
+}
+//---------------------------------------------------------------------------------------------
+void ofxGoIODeviceCalibrationData::clear(){
+	numSamples = 0;
+	rawMeasurements.clear();
+	volts.clear();
+	calbMeasurements.clear();
+}
+//---------------------------------------------------------------------------------------------
+bool ofxGoIODeviceCalibrationData::process(GOIO_SENSOR_HANDLE handle){
+	if(handle && numSamples > 1){
+		averageCalbMeasurement = 0;
+		for (size_t i = 0; i < numSamples; i++){
+			volts[i] = GoIO_Sensor_ConvertToVoltage(handle, rawMeasurements[i]);
+			calbMeasurements[i] = GoIO_Sensor_CalibrateData(handle, volts[i]);
+			averageCalbMeasurement += calbMeasurements[i];
+		}
+		averageCalbMeasurement = averageCalbMeasurement/numSamples;
+		return true;
+	}
+	return false;
+}
+//---------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
+std::ostream& operator<< (std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
 	os << "ofxGoIO Device Calibration Profile:" << std::endl;
-	os << "    Page Index: " << profile.calPageIndex << std::endl;
+	os << "    Page Index: " << (int)profile.calPageIndex << std::endl;
 	os << "    Coefficients: " << profile.coeff[0] << ", " << profile.coeff[1] << ", " << profile.coeff[2] << std::endl;
-	os << "    Equation type: " << profile.equationType;
+	os << "    Equation type: " << (int)profile.equationType;
 	if (profile.units.size()){
-		os  << std::endl << " ( " << profile.units << " )";
+		os  << std::endl << "    units: " << profile.units ;
 	}
 	return os;
 }
+//---------------------------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data){
 	os << "Measurement: " << std::endl;
 	os << "     Num Samples:  " << data.data.size() << std::endl;
  	os << "     Aquisition time:  " << data.aquisitionTime << std::endl;
-	os << "     sampleTimeInterval:  " << data.sampleTimeInterval << std::endl;
-	for(auto&d: data.data){
-		os << d << ", ";
+	os << "     sampleTimeInterval:  " << data.sampleTimeInterval ;
+	if(data.data.size()){
+		os << std::endl;
+		for(auto&d: data.data){
+			os << d << ", ";
+		}
 	}
-	os << std::endl;
 	return os;
 }
-
+//---------------------------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const ofxGoIODevice& dev){
 	os << "Name: " << dev.name << std::endl;
 	os << "Vendor Id: " << dev.vendorId << std::endl;
 	os << "Product Id: " << dev.productId << std::endl;
-	os << "Device Id: " << dev.id << std::endl;
+	os << "Device Id: " << (int) dev.id ;
 	if(dev.longName.size()){
-		os << "Long Name: " << dev.longName << std::endl;
+		os  << std::endl << "Long Name: " << dev.longName;
 	}
 	return os;
 }
 
-	
-	
-		void ofxGoIODeviceCalibrationData::setup(size_t _numSamples){
-			numSamples = _numSamples;
-			rawMeasurements.resize(_numSamples);
-			volts.resize(_numSamples);
-			calbMeasurements.resize(_numSamples);
-			averageCalbMeasurement = 0;
-			currentSample = 0;
-		}
-		size_t ofxGoIODeviceCalibrationData::size() {
-	return numSamples;
-	
-	}
-		void ofxGoIODeviceCalibrationData::clear(){
-			numSamples = 0;
-			rawMeasurements.clear();
-			volts.clear();
-			calbMeasurements.clear();
-		}
-		bool ofxGoIODeviceCalibrationData::process(GOIO_SENSOR_HANDLE handle){
-			if(handle && numSamples > 1){
-				averageCalbMeasurement = 0;
-				for (size_t i = 0; i < numSamples; i++){
-					volts[i] = GoIO_Sensor_ConvertToVoltage(handle, rawMeasurements[i]);
-					calbMeasurements[i] = GoIO_Sensor_CalibrateData(handle, volts[i]);
-					averageCalbMeasurement += calbMeasurements[i];
-				}
-				averageCalbMeasurement = averageCalbMeasurement/numSamples;
-				return true;
-			}
-			return false;
-		}
-	
 
+	
