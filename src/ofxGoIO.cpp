@@ -15,7 +15,9 @@
 using namespace std;
 //---------------------------------------------------------------------------------------------
 ofxGoIO::ofxGoIO()
+#ifdef OFX_GO_IO_USE_THREAD
 :ofxIOThread(std::bind(&ofxGoIO::threadedFunction, this))
+#endif
 {
 	init();
 	state = OFX_GO_IO_STATE_NOT_SETUP;
@@ -26,6 +28,11 @@ ofxGoIO::ofxGoIO()
 	exitListener = ofEvents().exit.newListener([&](ofEventArgs&){
 		uninit();
 	});
+	#ifndef OFX_GO_IO_USE_THREAD
+		updateListener = ofEvents().update.newListener([&](ofEventArgs&){
+			update();
+		});
+	#endif
 }
 ofxGoIO::~ofxGoIO(){
 	close();
@@ -168,20 +175,9 @@ bool ofxGoIO::openDevice( ofxGoIODevice device){
 	{
 		this->currentDevice = device;
 		
-		unsigned char charId;
-		GoIO_Sensor_DDSMem_GetSensorNumber(handle, &charId, 0, 0);
-		int id = charId;
+		getDeviceIdAndLongName(this->currentDevice);
 		
-		cout << "Sensor id = " << id;
-
-		char tmpstring[50];
-		GoIO_Sensor_DDSMem_GetLongName(handle, tmpstring, sizeof(tmpstring));
-		string longName = tmpstring;
-		
-		if (longName.size()){
-			cout << " ( " << longName << " ) ";
-		}
-		cout << endl;
+		cout << "Successfully opened device:\n" << this->currentDevice << endl;
 	
 		cout << getCurrentCalibrationFromDevice() << endl;
 		
@@ -194,6 +190,19 @@ bool ofxGoIO::openDevice( ofxGoIODevice device){
 //---------------------------------------------------------------------------------------------
 bool ofxGoIO::openDevice(string deviceName, int vid, int pid){
 	return openDevice({deviceName, vid, pid});
+}
+//---------------------------------------------------------------------------------------------
+bool ofxGoIO::getDeviceIdAndLongName(ofxGoIODevice& dev){
+	
+	bool ret = false;
+	ret |= (GoIO_Sensor_DDSMem_GetSensorNumber(handle, &dev.id, 0, 0) == 0);
+	
+	char tmpstring[50];
+	if(GoIO_Sensor_DDSMem_GetLongName(handle, tmpstring, sizeof(tmpstring)) == 0){
+		this->currentDevice.longName = tmpstring;
+		ret = true;
+	}
+	return ret;
 }
 //---------------------------------------------------------------------------------------------
 void ofxGoIO::close(){
@@ -297,7 +306,6 @@ void ofxGoIO::updateCalibration(){
 				calibrationData.process(handle);
 				
 				
-				
 				cout << "Calibration Ended. Average measurement: " << calibrationData.averageCalbMeasurement << currentDeviceCalibration.units << endl;
 				
 				setState(stateBeforeCalibration);
@@ -323,7 +331,9 @@ void ofxGoIO::updateMeasurements(){
 		}
 		if(n){
 			bHasNewData = true;
+#ifdef OFX_GO_IO_USE_THREAD
 			unique_lock<std::mutex> lck(dataMutex);
+#endif
 			measurements[currentMeasurementIndex] = lastMeasurement;
 			++currentMeasurementIndex %= measurements.size();
 			
@@ -360,7 +370,15 @@ bool ofxGoIO::stopMeasurements(int timeoutMs){
 	ofLogError("ofxGoIO::stopMeasurements") << "failed";
 	return false;
 }
-
+//---------------------------------------------------------------------------------------------
+void ofxGoIO::update(){
+	if(getState() == OFX_GO_IO_STATE_CALIBRATING){
+		updateCalibration();
+	}else if(getState() == OFX_GO_IO_STATE_MEASURING){
+		updateMeasurements();
+	}
+}
+#ifdef OFX_GO_IO_USE_THREAD
 //---------------------------------------------------------------------------------------------
 bool ofxGoIO::shouldRepeatWithDelay(uint64_t& delay) {
 	delay = measurementsInterval * 1000;
@@ -368,10 +386,9 @@ bool ofxGoIO::shouldRepeatWithDelay(uint64_t& delay) {
 }
 //---------------------------------------------------------------------------------------------
 void ofxGoIO::threadedFunction(){
-	if(getState() == OFX_GO_IO_STATE_CALIBRATING){
-		updateCalibration();
-	}
+	update();
 }
+#endif
 //---------------------------------------------------------------------------------------------
 const ofxGoIODeviceCalibrationProfile& ofxGoIO::getCurrentCalibrationFromDevice(){
 
@@ -400,10 +417,11 @@ void ofxGoIO::setState(ofxGoIO::State newState){
 		state = newState;
 		ofLogVerbose("ofxGoIO::setState") << " New state: \"" << stateToString(newState) << "\"";
 		// do whatever needed for the new state
-		
+#ifdef OFX_GO_IO_USE_THREAD
 		if(!isRunning() && (state == OFX_GO_IO_STATE_MEASURING || state == OFX_GO_IO_STATE_CALIBRATING)){
 			 start();
 		}
+#endif
 		
 	}else{
 		ofLogVerbose("ofxGoIO::setState") << "State \"" << stateToString(newState) << "\" already set";
@@ -431,3 +449,16 @@ void ofxGoIO::draw(){
 const ofxGoIODevice& ofxGoIO::getCurrentDevice(){
 	return currentDevice;
 }
+//---------------------------------------------------------------------------------------------
+std::string ofxGoIO::stateToString(ofxGoIO::State s){
+	switch(s){
+		case OFX_GO_IO_STATE_NOT_SETUP: return "Not Setup";
+		case OFX_GO_IO_STATE_SETUP: return "Setup";
+		case OFX_GO_IO_STATE_MEASURING: return "Measuring";
+		case OFX_GO_IO_STATE_SETTING_INTERVAL: return "Setting Interval";
+		case OFX_GO_IO_STATE_CALIBRATING: return "Calibrating";
+	}
+	return "";
+}
+//---------------------------------------------------------------------------------------------
+

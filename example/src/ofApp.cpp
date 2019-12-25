@@ -36,7 +36,6 @@ void ofApp::draw(){
 		stringstream ss;
 		ss << measurement;
 		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::cyan, ofColor::black);
-//		y += bf.getBoundingBox(ss.str(), 0, 0).height + 30;
 	}
 	
 	

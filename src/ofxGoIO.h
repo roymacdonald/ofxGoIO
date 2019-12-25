@@ -4,50 +4,20 @@
 //#include "ofRectangle.h"
 #include "ofMain.h"
 
+//#define OFX_GO_IO_USE_THREAD
+#ifdef OFX_GO_IO_USE_THREAD
 #include "ofxIOThread.h"
+#endif
 
 #include "GoIO_DLL_interface.h"
-
-
-
-
-
-
-
-
-
-
-
-
 
 //
 //IMPORTANTE. Todas las funciones de GOIO_ se tienen que llamar desde el mismo thread the abrio el device, esto no esta resuelto y hay qye resolverlo.
 //Quizas hacer una version no threaded no es mala idea. Usando unos ifdef
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #define OFX_GO_IO_DEFAULT_TIMEOUT SKIP_TIMEOUT_MS_DEFAULT
 #define OFX_GO_IO_DEFAULT_NUM_MEASUREMENTS 1000
+//---------------------------------------------------------------------------------------------------
 class ofxGoIODevice{
 public:
 	ofxGoIODevice(){}
@@ -62,16 +32,25 @@ public:
 	int productId = -1;		//USB product id
 	bool isSet() const{ return !name.empty() && vendorId != -1 && productId != -1;}
 	
+	unsigned char id;
+	string longName = "";
+	
 private:
 	
 };
 
 
 inline std::ostream& operator<<(std::ostream& os, const ofxGoIODevice& dev){
-	os << "Name: " << dev.name << " Vendor Id: " << dev.vendorId << " Product Id: " << dev.productId;
+	os << "Name: " << dev.name << std::endl;
+	os << "Vendor Id: " << dev.vendorId << std::endl;
+	os << "Product Id: " << dev.productId << std::endl;
+	os << "Device Id: " << dev.id << std::endl;
+	if(dev.longName.size()){
+		os << "Long Name: " << dev.longName << std::endl;
+	}
 	return os;
 }
-
+//---------------------------------------------------------------------------------------------------
 
 struct ofxGoIODeviceCalibrationProfile{
 	float coeff [3];
@@ -80,6 +59,19 @@ struct ofxGoIODeviceCalibrationProfile{
 	std::string units;
 };
 
+
+inline std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
+	os << "ofxGoIO Device Calibration Profile:" << std::endl;
+	os << "    Page Index: " << profile.calPageIndex << std::endl;
+	os << "    Coefficients: " << profile.coeff[0] << ", " << profile.coeff[1] << ", " << profile.coeff[2] << std::endl;
+	os << "    Equation type: " << profile.equationType;
+	if (profile.units.size()){
+		os  << std::endl << " ( " << profile.units << " )";
+	}
+	return os;
+}
+
+//---------------------------------------------------------------------------------------------------
 class ofxGoIOMeasurement{
 public:
 	std::vector<int>data;
@@ -102,7 +94,7 @@ inline std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data
 	return os;
 }
 
-
+//---------------------------------------------------------------------------------------------------
 
 class ofxGoIODeviceCalibrationData{
 public:
@@ -150,22 +142,16 @@ public:
 	
 };
 
+//---------------------------------------------------------------------------------------------------
 
-inline std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
-	os << "ofxGoIO Device Calibration Profile:" << std::endl;
-	os << "    Page Index: " << profile.calPageIndex << std::endl;
-	os << "    Coefficients: " << profile.coeff[0] << ", " << profile.coeff[1] << ", " << profile.coeff[2] << std::endl;
-	os << "    Equation type: " << profile.equationType;
-	if (profile.units.size()){
-		os  << std::endl << " ( " << profile.units << " )";
-	}
-	return os;
-}
-
-class ofxGoIO: public ofxIOThread{
+class ofxGoIO
+#ifdef OFX_GO_IO_USE_THREAD
+: public ofxIOThread
+#endif
+{
 public:
 	ofxGoIO();
-	~ofxGoIO();
+	virtual ~ofxGoIO();
 	
 	
 	static std::vector<ofxGoIODevice> getAvailableDevices();
@@ -179,11 +165,13 @@ public:
 	bool startMeasurements(int timeoutMs = OFX_GO_IO_DEFAULT_TIMEOUT);
 	bool stopMeasurements(int timeoutMs = OFX_GO_IO_DEFAULT_TIMEOUT);
 	
-	
+
 	bool openDevice(ofxGoIODevice device);
 	bool openDevice(std::string _deviceName, int vid, int pid);
 
 
+
+	
 	
 	double getMeasurementTickInSeconds();
 	double getMinimumMeasurementPeriod();
@@ -209,17 +197,8 @@ public:
 		OFX_GO_IO_STATE_SETTING_INTERVAL,
 		OFX_GO_IO_STATE_CALIBRATING,
 	};
-	static std::string stateToString(State s){
-		switch(s){
-			case OFX_GO_IO_STATE_NOT_SETUP: return "Not Setup";
-			case OFX_GO_IO_STATE_SETUP: return "Setup";
-			case OFX_GO_IO_STATE_MEASURING: return "Measuring";
-			case OFX_GO_IO_STATE_SETTING_INTERVAL: return "Setting Interval";
-			case OFX_GO_IO_STATE_CALIBRATING: return "Calibrating";
-		}
-		return "";
-	}
-
+	static std::string stateToString(State s);
+	
 	const ofxGoIODevice& getCurrentDevice();
 	
 	State getState();
@@ -228,31 +207,45 @@ public:
 	
 	ofEvent<ofxGoIOMeasurement>newMeasurementEvent;
 	
+	bool getDeviceIdAndLongName(ofxGoIODevice& dev);
+	
+	
 protected:
+	#ifdef OFX_GO_IO_USE_THREAD
 	virtual bool shouldRepeatWithDelay(uint64_t& delay) override;
 	void threadedFunction();
+#endif
 	
-	
+	void update();
 	void updateCalibration();
 	void updateMeasurements();
 
 
+private:
 
 	ofEventListener exitListener;
+#ifndef OFX_GO_IO_USE_THREAD
+	ofEventListener updateListener;
+#endif
 	
-	
-private:
 	static void init();
 	static void uninit();
 	static bool& isInited();
 
 	void setState(State newState);
 	
+#ifdef OFX_GO_IO_USE_THREAD
 	std::atomic<State> state;
-
 	std::atomic<double> measurementsInterval; // interval in seconds
-	
 	std::atomic<bool> bHasNewData;
+	std::mutex dataMutex;
+#else
+	State state;
+	double measurementsInterval; // interval in seconds
+	bool bHasNewData;
+#endif
+	
+	
 	
 	GOIO_SENSOR_HANDLE handle = NULL;
 	
@@ -263,7 +256,7 @@ private:
 	
 	State stateBeforeCalibration;
 	
-	std::mutex dataMutex;
+	
 	
 
 	ofxGoIOMeasurement lastMeasurement;
