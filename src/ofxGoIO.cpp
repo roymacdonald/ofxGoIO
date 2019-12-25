@@ -72,6 +72,7 @@ void addDevices(vector<ofxGoIODevice> & devices, int vid, int pid){
 		}
 	}
 }
+
 //---------------------------------------------------------------------------------------------
 vector<ofxGoIODevice> ofxGoIO::getAvailableDevices(){
 
@@ -88,27 +89,29 @@ vector<ofxGoIODevice> ofxGoIO::getAvailableDevices(){
 	
 }
 
+static std::string getDevicesAsString(const std::vector<ofxGoIODevice>& devices);
+
 //---------------------------------------------------------------------------------------------
-string ofxGoIO:: getAvailableDevicesAsString(){
+string ofxGoIO::getDevicesAsString(const std::vector<ofxGoIODevice>& devices){
 	stringstream ss;
-	auto devs = getAvailableDevices();
-	for(auto&d : devs){
+	for(auto&d : devices){
 		ss << d << endl;
 	}
 	return ss.str();
 }
 //---------------------------------------------------------------------------------------------
-void ofxGoIO::printAvailableDevices(){
+void ofxGoIO::printDevices(const std::vector<ofxGoIODevice>& devices){
 	cout << "--------------------------"<< endl;
 	cout << "ofxGoIO available devices:"<< endl;
-	cout << getAvailableDevicesAsString() << endl;
+	cout << getDevicesAsString(devices) << endl;
 }
 //---------------------------------------------------------------------------------------------
-void ofxGoIO::setup(ofxGoIODevice _device){
+bool ofxGoIO::setup(ofxGoIODevice _device){
 	auto devs = getAvailableDevices();
+	setState(OFX_GO_IO_STATE_NOT_SETUP);
 	if(devs.size() == 0){
 		ofLogError("ofxGoIO::setup") << "No devices available";
-		return;
+		return false;
 	}
 	if(!_device.isSet()){
 		if(openDevice(devs[0])){
@@ -130,14 +133,15 @@ void ofxGoIO::setup(ofxGoIODevice _device){
 			ofLogWarning("ofxGoIO::setup") << "failed. Device not found.";
 		}
 	}
+	return getState() == OFX_GO_IO_STATE_SETUP;
 }
 //---------------------------------------------------------------------------------------------
-void ofxGoIO::setup(string deviceName, int vid, int pid){
-	setup({deviceName, vid, pid});
+bool ofxGoIO::setup(string deviceName, int vid, int pid){
+	return setup({deviceName, vid, pid});
 }
 //---------------------------------------------------------------------------------------------
-void ofxGoIO::setup(){
-	setup(ofxGoIODevice());
+bool ofxGoIO::setup(){
+	return setup(ofxGoIODevice());
 }
 
 //---------------------------------------------------------------------------------------------
@@ -285,7 +289,7 @@ int ofxGoIO::getNumMeasurementsAvailable(){
 	return ret;
 }
 //---------------------------------------------------------------------------------------------
-bool ofxGoIO::calibrate( size_t numSamples){
+void ofxGoIO::calibrate( size_t numSamples){
 	
 	calibrationData.setup(numSamples);
 	
@@ -302,13 +306,13 @@ void ofxGoIO::updateCalibration(){
 				auto n = GoIO_Sensor_ReadRawMeasurements(handle, &calibrationData.rawMeasurements[calibrationData.currentSample], std::min(m, calibrationData.numSamples - calibrationData.currentSample));
 				calibrationData.currentSample += n;
 			}else{
-				getCurrentCalibrationFromDevice();
+				auto cal = getCurrentCalibrationFromDevice();
 				calibrationData.process(handle);
-				
 				
 				cout << "Calibration Ended. Average measurement: " << calibrationData.averageCalbMeasurement << currentDeviceCalibration.units << endl;
 				
 				setState(stateBeforeCalibration);
+				ofNotifyEvent(calibrationEndEvent, cal,this);
 				
 			}
 		}
@@ -342,6 +346,10 @@ void ofxGoIO::updateMeasurements(){
 		
 	}
 }
+ //---------------------------------------------------------------------------------------------
+bool ofxGoIO::startMeasurements(){
+	return startMeasurements(OFX_GO_IO_DEFAULT_TIMEOUT);
+}
 //---------------------------------------------------------------------------------------------
 bool ofxGoIO::startMeasurements(int timeoutMs){
 	if(getState() != OFX_GO_IO_STATE_MEASURING){
@@ -358,6 +366,10 @@ bool ofxGoIO::startMeasurements(int timeoutMs){
 	}
 	ofLogError("ofxGoIO::startMeasurements") << "failed";
 	return false;
+}
+//---------------------------------------------------------------------------------------------
+bool ofxGoIO::stopMeasurements(){
+	return stopMeasurements(OFX_GO_IO_DEFAULT_TIMEOUT);
 }
 //---------------------------------------------------------------------------------------------
 bool ofxGoIO::stopMeasurements(int timeoutMs){
@@ -427,24 +439,6 @@ void ofxGoIO::setState(ofxGoIO::State newState){
 		ofLogVerbose("ofxGoIO::setState") << "State \"" << stateToString(newState) << "\" already set";
 	}
 }
-void ofxGoIOMeasurement::addToMesh(ofMesh& mesh, const ofRectangle& viewport){
-//	std::vector<int>data;
-//	double aquisitionTime; // since app started running in seconds
-//	double sampleTimeInterval; // time interval between samples in seconds
-	
-	float x=0;
-	if(mesh.getNumVertices()){
-		x = mesh.getVertices().back().x;
-	}
-	for(auto&d: data){
-		
-	}
-	
-}
-//---------------------------------------------------------------------------------------------
-void ofxGoIO::draw(){
-	
-}
 //---------------------------------------------------------------------------------------------
 const ofxGoIODevice& ofxGoIO::getCurrentDevice(){
 	return currentDevice;
@@ -461,4 +455,72 @@ std::string ofxGoIO::stateToString(ofxGoIO::State s){
 	return "";
 }
 //---------------------------------------------------------------------------------------------
+
+std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile){
+	os << "ofxGoIO Device Calibration Profile:" << std::endl;
+	os << "    Page Index: " << profile.calPageIndex << std::endl;
+	os << "    Coefficients: " << profile.coeff[0] << ", " << profile.coeff[1] << ", " << profile.coeff[2] << std::endl;
+	os << "    Equation type: " << profile.equationType;
+	if (profile.units.size()){
+		os  << std::endl << " ( " << profile.units << " )";
+	}
+	return os;
+}
+std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data){
+	os << "Measurement: " << std::endl;
+	os << "     Num Samples:  " << data.data.size() << std::endl;
+ 	os << "     Aquisition time:  " << data.aquisitionTime << std::endl;
+	os << "     sampleTimeInterval:  " << data.sampleTimeInterval << std::endl;
+	for(auto&d: data.data){
+		os << d << ", ";
+	}
+	os << std::endl;
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const ofxGoIODevice& dev){
+	os << "Name: " << dev.name << std::endl;
+	os << "Vendor Id: " << dev.vendorId << std::endl;
+	os << "Product Id: " << dev.productId << std::endl;
+	os << "Device Id: " << dev.id << std::endl;
+	if(dev.longName.size()){
+		os << "Long Name: " << dev.longName << std::endl;
+	}
+	return os;
+}
+
+	
+	
+		void ofxGoIODeviceCalibrationData::setup(size_t _numSamples){
+			numSamples = _numSamples;
+			rawMeasurements.resize(_numSamples);
+			volts.resize(_numSamples);
+			calbMeasurements.resize(_numSamples);
+			averageCalbMeasurement = 0;
+			currentSample = 0;
+		}
+		size_t ofxGoIODeviceCalibrationData::size() {
+	return numSamples;
+	
+	}
+		void ofxGoIODeviceCalibrationData::clear(){
+			numSamples = 0;
+			rawMeasurements.clear();
+			volts.clear();
+			calbMeasurements.clear();
+		}
+		bool ofxGoIODeviceCalibrationData::process(GOIO_SENSOR_HANDLE handle){
+			if(handle && numSamples > 1){
+				averageCalbMeasurement = 0;
+				for (size_t i = 0; i < numSamples; i++){
+					volts[i] = GoIO_Sensor_ConvertToVoltage(handle, rawMeasurements[i]);
+					calbMeasurements[i] = GoIO_Sensor_CalibrateData(handle, volts[i]);
+					averageCalbMeasurement += calbMeasurements[i];
+				}
+				averageCalbMeasurement = averageCalbMeasurement/numSamples;
+				return true;
+			}
+			return false;
+		}
+	
 
