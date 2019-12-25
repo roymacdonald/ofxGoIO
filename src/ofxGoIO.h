@@ -237,10 +237,16 @@ public:
 	/// Event triggered when a new set of measurement has arrived.
 	ofEvent<ofxGoIOMeasurement>newMeasurementEvent;
 	
+
+	/// get the internal Go! device handle. Be careful while using this.
+	/// Use it for running some of the more advanced functions available in the SDK or any that is not implemented by this addon.
+	GOIO_SENSOR_HANDLE getDeviceHandle();
+	
+	
 protected:
 	bool getDeviceIdAndLongName(ofxGoIODevice& dev);
 	
-	#ifdef OFX_GO_IO_USE_THREAD
+#ifdef OFX_GO_IO_USE_THREAD
 	virtual bool shouldRepeatWithDelay(uint64_t& delay) override;
 	void threadedFunction();
 #endif

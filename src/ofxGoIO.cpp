@@ -451,6 +451,11 @@ std::string ofxGoIO::stateToString(ofxGoIO::State s){
 	return "";
 }
 //---------------------------------------------------------------------------------------------
+GOIO_SENSOR_HANDLE ofxGoIO::getDeviceHandle(){
+	return handle;
+}
+
+//---------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------
 void ofxGoIODeviceCalibrationData::setup(size_t _numSamples){
 	numSamples = _numSamples;
