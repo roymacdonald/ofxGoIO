@@ -5,8 +5,12 @@ void ofApp::setup(){
 	measurementListener =  goIO.newMeasurementEvent.newListener( [&](ofxGoIOMeasurement& m){
 		measurement = m;
 	});
-	goIO.setup();
-	goIO.startMeasurements();
+	if(goIO.setup()){
+		maxPeriod = goIO.getMaximumMeasurementPeriod();
+		minPeriod = goIO.getMinimumMeasurementPeriod();
+		currentPeriod = goIO.getMeasurementPeriod() ;
+		goIO.startMeasurements();
+	}
 }
 
 //--------------------------------------------------------------
@@ -17,31 +21,79 @@ void ofApp::update(){
 void ofApp::exit(){
 	goIO.close();
 }
+void drawString(const string& str, float x, float & y, float margin, ofColor bgcolor, ofColor fgcolor = ofColor::black){
+	ofBitmapFont bf;
+	ofPushStyle();
+	ofSetColor(bgcolor);
+	auto r = bf.getBoundingBox(str, x, y);
+	r.x -= 5;
+	r.y -= 5;
+	r.height +=10;
+	r.width +=10;
+	float h = r.height;
+	ofDrawRectangle(r);
+	
+//	ofDrawBitmapStringHighlight(str, x, y, bgcolor, fgcolor);
+	ofSetColor(fgcolor);
+	ofDrawBitmapString(str, x, y);
+	
+	ofPopStyle();
+	
+	y += h + margin;
+	
+}
 //--------------------------------------------------------------
 void ofApp::draw(){
 	float y = 30;
-	ofBitmapFont bf;
+	float margin = 10;
+	float x = 30;
 	{
 		stringstream ss;
 		ss << goIO.getCurrentDevice();
-		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::yellow, ofColor::black);
-		y += bf.getBoundingBox(ss.str(), 0, 0).height + 30;
+		ss << endl;
+		ss << "a"<< endl;
+		ss << "Measurement period: " << endl;
+		ss << "    current: " << currentPeriod << endl;
+		ss << "    maximum: " << maxPeriod << endl;
+		ss << "    minimum: " << minPeriod << endl;
+		
+		drawString(ss.str(), x, y,  margin, ofColor::yellow);
+//		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::yellow, ofColor::black);
+//		float h = bf.getBoundingBox(ss.str(), 0, 0).height;
+//
+//		ofPushStyle();
+//		ofSetColor(20);
+//		ofDrawRectangle(25, y, 3, h);
+//		ofPopStyle();
+//
+//		y += h + margin;
+		
 	}
 	{
 		auto state = ofxGoIO::stateToString(goIO.getState());
-		ofDrawBitmapStringHighlight(state, 30, y, ofColor::magenta, ofColor::black);
-		y += bf.getBoundingBox(state, 0, 0).height + 30;
+		drawString(state, x, y,  margin, ofColor::magenta);
+		
+//		ofDrawBitmapStringHighlight(state, 30, y, ofColor::magenta, ofColor::black);
+//		y += bf.getBoundingBox(state, 0, 0).height + margin;
 	}
 	{
 		stringstream ss;
 		ss << measurement;
-		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::cyan, ofColor::black);
-		y += bf.getBoundingBox(ss.str(), 0, 0).height + 30;
+		drawString(ss.str(), x, y,  margin, ofColor::cyan);
+//		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::cyan, ofColor::black);
+//		y += bf.getBoundingBox(ss.str(), 0, 0).height + margin;
 	}
 	stringstream ss;
 	ss << "App Framerate: " << ofGetFrameRate();
-	ofDrawBitmapStringHighlight(ss.str(), 30, y);
-	
+	drawString(ss.str(), x, y,  margin, ofColor::black, ofColor::white);
+
+	if(bDraw){
+		ofRectangle r( x, y, ofGetWidth() - 2*x,  ofGetHeight() - y - x );
+		ofSetColor(80);
+		ofDrawRectangle(r);
+		ofSetColor(180);
+		renderer.draw(goIO, r);
+	}
 	
 
 }
@@ -53,7 +105,9 @@ void ofApp::keyPressed(int key){
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
-
+	if(key == ' '){
+		bDraw ^= true;
+	}
 }
 
 //--------------------------------------------------------------

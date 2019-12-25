@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include "ofxGoIO.h"
+#include "ofxGoIORenderer.h"
 class ofApp : public ofBaseApp{
 
 	public:
@@ -24,6 +25,13 @@ class ofApp : public ofBaseApp{
 	ofxGoIO goIO;
 	ofxGoIOMeasurement measurement;
 	
+
 	ofEventListener measurementListener;
+
+	ofxGoIORenderer renderer;
+	bool bDraw = false;
+	double maxPeriod = 0;
+	double minPeriod = 0;
+	double currentPeriod = 0;
 	
 };
