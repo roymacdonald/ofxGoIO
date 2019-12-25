@@ -6,10 +6,11 @@ void ofApp::setup(){
 		measurement = m;
 	});
 	if(goIO.setup()){
+		goIO.startMeasurements();
 		maxPeriod = goIO.getMaximumMeasurementPeriod();
 		minPeriod = goIO.getMinimumMeasurementPeriod();
 		currentPeriod = goIO.getMeasurementPeriod() ;
-		goIO.startMeasurements();
+
 	}
 }
 
@@ -33,7 +34,6 @@ void drawString(const string& str, float x, float & y, float margin, ofColor bgc
 	float h = r.height;
 	ofDrawRectangle(r);
 	
-//	ofDrawBitmapStringHighlight(str, x, y, bgcolor, fgcolor);
 	ofSetColor(fgcolor);
 	ofDrawBitmapString(str, x, y);
 	
@@ -58,30 +58,17 @@ void ofApp::draw(){
 		ss << "    minimum: " << minPeriod << endl;
 		
 		drawString(ss.str(), x, y,  margin, ofColor::yellow);
-//		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::yellow, ofColor::black);
-//		float h = bf.getBoundingBox(ss.str(), 0, 0).height;
-//
-//		ofPushStyle();
-//		ofSetColor(20);
-//		ofDrawRectangle(25, y, 3, h);
-//		ofPopStyle();
-//
-//		y += h + margin;
 		
 	}
 	{
 		auto state = ofxGoIO::stateToString(goIO.getState());
 		drawString(state, x, y,  margin, ofColor::magenta);
 		
-//		ofDrawBitmapStringHighlight(state, 30, y, ofColor::magenta, ofColor::black);
-//		y += bf.getBoundingBox(state, 0, 0).height + margin;
 	}
 	{
 		stringstream ss;
 		ss << measurement;
 		drawString(ss.str(), x, y,  margin, ofColor::cyan);
-//		ofDrawBitmapStringHighlight(ss.str(), 30, y, ofColor::cyan, ofColor::black);
-//		y += bf.getBoundingBox(ss.str(), 0, 0).height + margin;
 	}
 	stringstream ss;
 	ss << "App Framerate: " << ofGetFrameRate();
