@@ -1,1 +1,3 @@
 ofxGoIO
+ofxGui
+ofxTimeMeasurements

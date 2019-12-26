@@ -16,6 +16,25 @@ void ofApp::setup(){
 	for(size_t i = 0; i < rendererBuffer.size(); i++){
 		rendererBuffer[i].rawData = ofMap(i, 0, rendererBuffer.size() - 1 ,-32767, 32767);
 	}
+	
+	ofBitmapFont bf;
+	cout << "ofBitmapFont rect: " << ofToString(bf.getBoundingBox(" ", 0, 0)) << endl;
+	
+	
+	gui.setup();
+	
+	gui.add(x);
+	gui.add(y);
+	gui.add(margin);
+	gui.add(padding);
+	
+	cam.removeAllInteractions();
+	cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
+	cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_Z, OF_MOUSE_BUTTON_RIGHT);
+	cam.enableOrtho();
+	cam.setNearClip(-1000000);
+	cam.setFarClip(1000000);
+	cam.setVFlip(true);
 }
 
 //--------------------------------------------------------------
@@ -27,11 +46,24 @@ void ofApp::update(){
 void ofApp::exit(){
 	goIO.close();
 }
-ofRectangle drawString(const string& str, float &x, float & y, float margin, float padding, ofColor bgcolor, ofColor fgcolor = ofColor::black){
+ofRectangle drawString(const string& str, const ofRectangle& refRect, bool bHorizontalStack, float margin, float padding, ofColor bgcolor, ofColor fgcolor = ofColor::black){
 	ofBitmapFont bf;
 	ofPushStyle();
 	ofSetColor(bgcolor);
-	auto r = bf.getBoundingBox(str, x, y);
+	glm::vec3 p;
+	if(bHorizontalStack){
+		p = refRect.getTopRight();
+		p.x += margin;
+		
+	}else{
+		p = refRect.getBottomLeft();
+		p.y += margin;
+	}
+	p.x += padding;
+	p.y += padding;
+	p.y += 11;
+	
+	auto r = bf.getBoundingBox(str, p.x, p.y);
 	r.x -= padding;
 	r.y -= padding;
 	r.height += padding*2;
@@ -40,24 +72,26 @@ ofRectangle drawString(const string& str, float &x, float & y, float margin, flo
 	ofDrawRectangle(r);
 	
 	ofSetColor(fgcolor);
-	ofDrawBitmapString(str, x, y);
+	ofDrawBitmapString(str, p.x, p.y);
 	
 	ofPopStyle();
 	
 //	y += h + margin;
-	x = r.getMaxX() + margin;
+//	x = r.getMaxX() + margin;
 	
 	return r;
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
-	float y = 30;
-	float margin = 10;
-	float padding = 5;
-	float x = 30;
+//	float y = 30;
+//	float margin = 10;
+//	float padding = 5;
+//	float x = 30;
+//
+//	cam.begin();
 	float mxy = 0;
 	float mnx = x - padding;
-	ofRectangle r;
+	ofRectangle r(mnx, 0, 0,0);
 	{
 		stringstream ss;
 		ss << goIO.getCurrentDevice();
@@ -68,31 +102,37 @@ void ofApp::draw(){
 		ss << "    maximum: " << maxPeriod << endl;
 		ss << "    minimum: " << minPeriod << endl;
 		
-		r = drawString(ss.str(), x, y, margin, padding, ofColor::yellow);
+		r = drawString(ss.str(), r, false, margin, padding, ofColor::yellow);
 		mxy =  std::max(mxy, r.getMaxY());
 	}
 	{
 		auto state = ofxGoIO::stateToString(goIO.getState());
-		r = drawString(state, x, y, margin, padding, ofColor::magenta);
+		r = drawString(state, r, true, margin, padding, ofColor::magenta);
 		mxy =  std::max(mxy, r.getMaxY());
 	}
 	{
 		stringstream ss;
 		ss << measurement;
-		r = drawString(ss.str(), x, y, margin, padding, ofColor::cyan);
-		mxy =  std::max(mxy, r.getMaxY());
+		auto r2 = drawString(ss.str(), r, false, margin, padding, ofColor::cyan);
+		mxy =  std::max(mxy, r2.getMaxY());
 	}
 	stringstream ss;
 	ss << "App Framerate: " << ofGetFrameRate();
-	r = drawString(ss.str(), x, y, margin, padding, ofColor::black, ofColor::white);
+	r = drawString(ss.str(), r, true, margin, padding, ofColor::black, ofColor::white);
 	mxy =  std::max(mxy, r.getMaxY());
 //	if(bDraw){
 	mxy += margin;
 	waveRect.set( mnx, mxy, ofGetWidth() - 2*mnx,  ofGetHeight() - mxy - mnx );
-	renderer.draw(rendererBuffer, bufferIndex, waveRect, ofColor(40), ofColor(150));
-//	}
 	
-
+//	renderer.draw(rendererBuffer, bufferIndex, waveRect, ofColor(40), ofColor(150));
+	renderer.draw(goIO, waveRect, ofColor(40), ofColor(150));
+//	}
+//x	xxx
+	
+//	cam.end();
+	
+//	gui.draw();
+	
 }
 
 //--------------------------------------------------------------

@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "ofxGoIO.h"
 #include "ofxGoIORenderer.h"
+#include "ofxGui.h"
 class ofApp : public ofBaseApp{
 
 	public:
@@ -38,5 +39,15 @@ class ofApp : public ofBaseApp{
 	size_t bufferIndex = 0;
 	
 	ofRectangle waveRect;
+
 	
+	ofParameter<float> x = {"x", 30, 0, 1000};
+	ofParameter<float> y = {"y", 30, 0, 1000};
+	ofParameter<float> margin = {"margin", 10, 0, 100};
+	ofParameter<float> padding = {"padding", 5, 0, 100};
+	
+
+	ofxPanel gui;
+	
+	ofEasyCam cam;
 };
