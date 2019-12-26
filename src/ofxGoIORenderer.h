@@ -11,25 +11,50 @@
 
 class  ofxGoIORenderer{
 public:
-	void draw(const ofxGoIO& goIO, const ofRectangle& rect ){
-		ofMesh mesh;
-		mesh.setMode(OF_PRIMITIVE_LINE_STRIP);
-		size_t totalMeasurements = 0;
-		for(size_t i = 0; i < goIO.measurements.size(); i++){
-			totalMeasurements += goIO.measurements[i].data.size();
-		}
-		float xInc = rect.width / totalMeasurements;
-		size_t vInd = 0;
+	
+//	ofxGoIORenderer(){
+		
+//		signalMesh.setUsage(GL_DYNAMIC_DRAW);
+		
+//	}
+	void draw(const ofxGoIOMeasurement& measurements, size_t currentIndex, const ofRectangle& rect, const ofColor& bgColor, const ofColor& signalColor  ){
+		ofMesh signalMesh;
+		signalMesh.setMode(OF_PRIMITIVE_LINE_STRIP);
+//		auto& verts = signalMesh.getVertices();
+//		if(verts.size() != measurements.size()){
+//			verts.resize(measurements.size());
+//		}
+		
+//		measurements.front().rawData = -32767;
+//		measurements.back().rawData = 32767;
+		
+		float xInc = rect.width / measurements.size();
+//		size_t vInd = 0;
+		
 		auto rmn = rect.getMinY();
 		auto rmx = rect.getMaxY();
-		for(size_t i = 0; i < goIO.measurements.size(); i++){
-			auto& m = goIO.measurements[(i+goIO.currentMeasurementIndex)%goIO.measurements.size()];
-			for(size_t j = 0; j < m.data.size(); j++){
-				mesh.addVertex({vInd * xInc + rect.x,  ofMap(m.data[j], -32767, 32767, rmn, rmx) ,0.0f });
-				++vInd;
-			}
+		
+		size_t ind = 0;
+		for(size_t i = 0; i < measurements.size(); i++){
+			ind = (i + currentIndex) % measurements.size();
+			auto& m = measurements[ind];
+//			verts[i].x = (measurements.size() - i - 1) * xInc + rect.x;
+//			verts[i].y = ofMap(m.rawData, -32767, 32767, rmn, rmx);
+//			verts[i].z = 0.0f;
+			
+			signalMesh.addVertex({(measurements.size() - i - 1) * xInc + rect.x, ofMap(m.rawData, -32767, 32767, rmn, rmx), 0.0f});
 		}
-		mesh.draw();
+	
+		ofSetColor(bgColor);
+		ofDrawRectangle(rect);
+		ofSetColor(signalColor);
+		
+		signalMesh.draw();
+//		ofPushStyle();
+//		ofSetColor(ofColor::red);
+//		auto x =  currentIndex * xInc + rect.x ;
+//		ofDrawLine(x, rmn, x, rmx);
+//		ofPopStyle();
 	}
 };
 

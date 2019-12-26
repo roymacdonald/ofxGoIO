@@ -51,13 +51,18 @@ struct ofxGoIODeviceCalibrationProfile{
 std::ostream& operator<<(std::ostream& os, const ofxGoIODeviceCalibrationProfile& profile);
 
 //---------------------------------------------------------------------------------------------------
-class ofxGoIOMeasurement{
-public:
-	std::vector<int>data;
-	double aquisitionTime; // since app started running in seconds
-	double sampleTimeInterval; // time interval between samples in seconds
-	
+struct ofxGoIOData{
+	int rawData;
+	double aquisitionTime;
 };
+//---------------------------------------------------------------------------------------------------
+typedef std::vector<ofxGoIOData> ofxGoIOMeasurement;
+//class ofxGoIOMeasurement{
+//public:
+//	std::vector<ofxGoIOData>data;
+//	double aquisitionTime; // since app started running in seconds
+//	double sampleTimeInterval; // time interval between samples in seconds
+//};
 
 std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data);
 //---------------------------------------------------------------------------------------------------
@@ -299,8 +304,8 @@ private:
 
 	ofxGoIOMeasurement lastMeasurement;
 	
-	std::vector<ofxGoIOMeasurement> measurements;
+	ofxGoIOMeasurement measurementsBuffer;
 
-	size_t currentMeasurementIndex;
+	size_t currentMeasurementIndex = 0;
 	
 };

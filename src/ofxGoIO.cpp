@@ -319,13 +319,18 @@ void ofxGoIO::updateMeasurements(){
 	if(getState() == OFX_GO_IO_STATE_MEASURING){
 		size_t m = getNumMeasurementsAvailable();
 		if(m){
-			lastMeasurement.data.resize(m);
 			
+			
+			vector<int> tempData (m);
 			auto n = GoIO_Sensor_ReadRawMeasurements(handle,
-													 lastMeasurement.data.data(),
+													 tempData.data(),
 													 m);
-			lastMeasurement.aquisitionTime = ofGetElapsedTimef();
-			lastMeasurement.sampleTimeInterval = measurementsInterval;
+			auto t = ofGetElapsedTimef();
+//			for(size_t i =0; i < lastMeasurement.data.size(); i ++){
+//				lastMeasurement.data
+//			}
+//			lastMeasurement.sampleTimeInterval =
+//			measurementsInterval;
 			if(n != m){
 				ofLogError("ofxGoIO::updateMeasurements()") << "did not read all available measurements";
 			}
@@ -334,8 +339,13 @@ void ofxGoIO::updateMeasurements(){
 #ifdef OFX_GO_IO_USE_THREAD
 				unique_lock<std::mutex> lck(dataMutex);
 #endif
-				measurements[currentMeasurementIndex] = lastMeasurement;
-				++currentMeasurementIndex %= measurements.size();
+				lastMeasurement.resize(n);
+				for(size_t i = 0; i < n; i++){
+					lastMeasurement[i].rawData = tempData[i];
+					measurementsBuffer[currentMeasurementIndex].rawData =  tempData[i];
+					measurementsBuffer[currentMeasurementIndex].aquisitionTime = lastMeasurement[i].aquisitionTime = t - measurementsInterval * (n -1 -i) ;
+					++currentMeasurementIndex %= measurementsBuffer.size();
+				}
 				
 			}
 			ofNotifyEvent(newMeasurementEvent, lastMeasurement, this);
@@ -353,7 +363,7 @@ bool ofxGoIO::startMeasurements(int timeoutMs){
 			bool bRet = GoIO_Sensor_SendCmdAndGetResponse(handle, SKIP_CMD_ID_START_MEASUREMENTS, NULL, 0, NULL, NULL, timeoutMs) == 0;
 			if(bRet){
 				currentMeasurementIndex = 0;
-				measurements.resize(OFX_GO_IO_DEFAULT_NUM_MEASUREMENTS);
+				measurementsBuffer.resize(OFX_GO_IO_DEFAULT_NUM_MEASUREMENTS);
 				
 				setState(OFX_GO_IO_STATE_MEASURING);
 				return true;
@@ -505,15 +515,11 @@ std::ostream& operator<< (std::ostream& os, const ofxGoIODeviceCalibrationProfil
 //---------------------------------------------------------------------------------------------
 std::ostream& operator<<(std::ostream& os, const ofxGoIOMeasurement& data){
 	os << "Measurement: " << std::endl;
-	os << "     Num Samples:  " << data.data.size() << std::endl;
- 	os << "     Aquisition time:  " << data.aquisitionTime << std::endl;
-	os << "     sampleTimeInterval:  " << data.sampleTimeInterval ;
-	if(data.data.size()){
-		os << std::endl;
-		for(auto&d: data.data){
-			os << d << ", ";
-		}
+	os << "     Num Samples:  " << data.size();
+	for(auto&d: data){
+		os  << std::endl << "     " << d.rawData  << " Aquisition time:  " << d.aquisitionTime;
 	}
+	
 	return os;
 }
 //---------------------------------------------------------------------------------------------
