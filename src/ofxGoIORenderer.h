@@ -17,6 +17,7 @@ public:
 //		signalMesh.setUsage(GL_DYNAMIC_DRAW);
 		
 //	}
+	
 	void draw(const ofxGoIOMeasurement& measurements, size_t currentIndex, const ofRectangle& rect, const ofColor& bgColor, const ofColor& signalColor  ){
 		ofMesh signalMesh;
 		signalMesh.setMode(OF_PRIMITIVE_LINE_STRIP);
@@ -50,11 +51,14 @@ public:
 		ofSetColor(signalColor);
 		
 		signalMesh.draw();
-//		ofPushStyle();
-//		ofSetColor(ofColor::red);
-//		auto x =  currentIndex * xInc + rect.x ;
-//		ofDrawLine(x, rmn, x, rmx);
-//		ofPopStyle();
+		ofPushStyle();
+		ofSetColor(ofColor::red);
+		auto x =  currentIndex * xInc + rect.x ;
+		ofDrawLine(x, rmn, x, rmx);
+		ofPopStyle();
+	}
+	void draw(const ofxGoIO& goIO , const ofRectangle& rect, const ofColor& bgColor, const ofColor& signalColor  ){
+		draw(goIO.measurementsBuffer, goIO.currentMeasurementIndex, rect, bgColor, signalColor);
 	}
 };
 
