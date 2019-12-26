@@ -34,4 +34,9 @@ class ofApp : public ofBaseApp{
 	double minPeriod = 0;
 	double currentPeriod = 0;
 	
+	ofxGoIOMeasurement rendererBuffer;
+	size_t bufferIndex = 0;
+	
+	ofRectangle waveRect;
+	
 };

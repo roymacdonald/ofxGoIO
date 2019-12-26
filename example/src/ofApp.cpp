@@ -12,26 +12,31 @@ void ofApp::setup(){
 		currentPeriod = goIO.getMeasurementPeriod() ;
 
 	}
+	rendererBuffer.resize(1000);
+	for(size_t i = 0; i < rendererBuffer.size(); i++){
+		rendererBuffer[i].rawData = ofMap(i, 0, rendererBuffer.size() - 1 ,-32767, 32767);
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-
+	rendererBuffer[bufferIndex].rawData = ofGetMouseY();
+	++bufferIndex %= rendererBuffer.size();
 }
 //--------------------------------------------------------------
 void ofApp::exit(){
 	goIO.close();
 }
-void drawString(const string& str, float x, float & y, float margin, ofColor bgcolor, ofColor fgcolor = ofColor::black){
+ofRectangle drawString(const string& str, float &x, float & y, float margin, float padding, ofColor bgcolor, ofColor fgcolor = ofColor::black){
 	ofBitmapFont bf;
 	ofPushStyle();
 	ofSetColor(bgcolor);
 	auto r = bf.getBoundingBox(str, x, y);
-	r.x -= 5;
-	r.y -= 5;
-	r.height +=10;
-	r.width +=10;
-	float h = r.height;
+	r.x -= padding;
+	r.y -= padding;
+	r.height += padding*2;
+	r.width += padding*2;
+//	float h = r.height;
 	ofDrawRectangle(r);
 	
 	ofSetColor(fgcolor);
@@ -39,14 +44,20 @@ void drawString(const string& str, float x, float & y, float margin, ofColor bgc
 	
 	ofPopStyle();
 	
-	y += h + margin;
+//	y += h + margin;
+	x = r.getMaxX() + margin;
 	
+	return r;
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
 	float y = 30;
 	float margin = 10;
+	float padding = 5;
 	float x = 30;
+	float mxy = 0;
+	float mnx = x - padding;
+	ofRectangle r;
 	{
 		stringstream ss;
 		ss << goIO.getCurrentDevice();
@@ -57,30 +68,29 @@ void ofApp::draw(){
 		ss << "    maximum: " << maxPeriod << endl;
 		ss << "    minimum: " << minPeriod << endl;
 		
-		drawString(ss.str(), x, y,  margin, ofColor::yellow);
-		
+		r = drawString(ss.str(), x, y, margin, padding, ofColor::yellow);
+		mxy =  std::max(mxy, r.getMaxY());
 	}
 	{
 		auto state = ofxGoIO::stateToString(goIO.getState());
-		drawString(state, x, y,  margin, ofColor::magenta);
-		
+		r = drawString(state, x, y, margin, padding, ofColor::magenta);
+		mxy =  std::max(mxy, r.getMaxY());
 	}
 	{
 		stringstream ss;
 		ss << measurement;
-		drawString(ss.str(), x, y,  margin, ofColor::cyan);
+		r = drawString(ss.str(), x, y, margin, padding, ofColor::cyan);
+		mxy =  std::max(mxy, r.getMaxY());
 	}
 	stringstream ss;
 	ss << "App Framerate: " << ofGetFrameRate();
-	drawString(ss.str(), x, y,  margin, ofColor::black, ofColor::white);
-
-	if(bDraw){
-		ofRectangle r( x, y, ofGetWidth() - 2*x,  ofGetHeight() - y - x );
-		ofSetColor(80);
-		ofDrawRectangle(r);
-		ofSetColor(180);
-		renderer.draw(goIO, r);
-	}
+	r = drawString(ss.str(), x, y, margin, padding, ofColor::black, ofColor::white);
+	mxy =  std::max(mxy, r.getMaxY());
+//	if(bDraw){
+	mxy += margin;
+	waveRect.set( mnx, mxy, ofGetWidth() - 2*mnx,  ofGetHeight() - mxy - mnx );
+	renderer.draw(rendererBuffer, bufferIndex, waveRect, ofColor(40), ofColor(150));
+//	}
 	
 
 }
@@ -99,7 +109,8 @@ void ofApp::keyReleased(int key){
 
 //--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y ){
-
+	
+	
 }
 
 //--------------------------------------------------------------
